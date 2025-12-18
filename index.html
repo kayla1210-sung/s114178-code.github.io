@@ -1,3 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>像素 RPG 遊戲</title>
+<style>
+  body { margin:0; background:#222; display:flex; justify-content:center; align-items:center; height:100vh; }
+  canvas { border:2px solid #000; image-rendering: pixelated; }
+  #dialog {
+    position:absolute;
+    bottom:20px; left:50%;
+    transform:translateX(-50%);
+    background:rgba(0,0,0,0.8);
+    color:#fff;
+    padding:10px 15px;
+    font-family:sans-serif;
+    display:none;
+    border-radius:4px;
+  }
+</style>
+</head>
+<body>
+<canvas id="game" width="320" height="160"></canvas>
+<div id="dialog"></div>
+<script src="game.js"></script>
+</body>
+</html>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const TILE = 16;
@@ -12,9 +39,6 @@ const maps = {
     "#....##............#",
     "#........#####.....#",
     "#..................#",
-    "####################",
-    "####################",
-    "####################",
     "####################"
   ],
   corridor:[
@@ -24,9 +48,6 @@ const maps = {
     "#.......#..........#",
     "#..................#",
     "#........>.........#",
-    "####################",
-    "####################",
-    "####################",
     "####################"
   ],
   library:[
@@ -36,9 +57,6 @@ const maps = {
     "#..................#",
     "#....####....##....#",
     "#..................#",
-    "####################",
-    "####################",
-    "####################",
     "####################"
   ],
   garden:[
@@ -48,9 +66,6 @@ const maps = {
     "#......##..........#",
     "#..................#",
     "#........>.........#",
-    "####################",
-    "####################",
-    "####################",
     "####################"
   ],
   treasure:[
@@ -60,38 +75,25 @@ const maps = {
     "#......#..#........#",
     "#......####........#",
     "#..................#",
-    "####################",
-    "####################",
-    "####################",
     "####################"
   ]
 };
 
-/* ===== 精緻像素圖 (Base64) ===== */
-const spritePlayer = new Image();
-spritePlayer.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAArElEQVQoz2NgoBbg////P4Q/79+/vzMxMTEwMDAwPD////79+9gbGzExMTEx8fHxP///x8fHx8QEBAcHBw8PDw8PDw/Pz8XFxcbGxsYGhn5+f4GBgYGBgYGBgYGBgYGJgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGJgYGBoYGBgYGBgYGBoYGBgYGAAAAP//AwAGB9p5fRCFiwAAAABJRU5ErkJggg==";
-
-const spriteNPC = new Image();
-spriteNPC.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAnUlEQVQoz2NgoBbg////P4Q/79+/f2NjY2BgYGBoZGhkYGBoYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGJgYGBgYGBoYGBgYGBgYGBoYGBgYGAAAAP//AwAGB9p5fRCFiwAAAABJRU5ErkJggg==";
-
-const spriteObjects = new Image();
-spriteObjects.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAPCAYAAAA71pVKAAAAlklEQVQoz2NgoBbg////P4Q/79+/fzMxMTEwMDAwPD////79+9gbGzExMTEx8fHxP///x8fHx8QEBAcHBw8PDw8PDw/Pz8XFxcbGxsYGhn5+f4GBgYGBgYGBgYGBgYGJgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGJgYGBoYGBgYGBgYGBoYGBgYGAAAAP//AwAGB9p5fRCFiwAAAABJRU5ErkJggg==";
-
-/* ===== 玩家設定 ===== */
-const player = { x:TILE*2, y:TILE*2, w:12, h:12, dir:"down", frame:0, animTimer:0, moving:false };
+/* ===== 玩家 ===== */
+const player = { x:TILE*2, y:TILE*2, w:12, h:12, dir:"down", moving:false };
 
 /* ===== NPC ===== */
 const npcs=[
-  {x:TILE*10, y:TILE*2, w:12,h:12,dir:"down",frame:0,msg:["你好，我是守衛"],route:[{x:10,y:2},{x:10,y:4}],routeIndex:0,routeTimer:0,room:"hall"},
-  {x:TILE*5, y:TILE*3, w:12,h:12,dir:"down",frame:0,msg:["歡迎來到書房"],route:[],room:"library"},
-  {x:TILE*3, y:TILE*2, w:12,h:12,dir:"down",frame:0,msg:["庭院裡的花真漂亮"],route:[],room:"garden"},
-  {x:TILE*6, y:TILE*2, w:12,h:12,dir:"down",frame:0,msg:["寶庫裡藏有寶物"],route:[],room:"treasure"}
+  {x:TILE*10,y:TILE*2,msg:["你好，我是守衛"],room:"hall"},
+  {x:TILE*5,y:TILE*3,msg:["歡迎來到書房"],room:"library"},
+  {x:TILE*3,y:TILE*2,msg:["庭院裡的花真漂亮"],room:"garden"},
+  {x:TILE*6,y:TILE*2,msg:["寶庫裡藏有寶物"],room:"treasure"}
 ];
 
-/* ===== 互動物件 ===== */
+/* ===== 物件 ===== */
 const items=[
-  {x:TILE*5,y:TILE*2,w:12,h:12,name:"書",msg:"這是一本古老的書",room:"hall"},
-  {x:TILE*6,y:TILE*3,w:12,h:12,name:"寶箱",msg:"打開了！裡面有金幣",room:"treasure"}
+  {x:TILE*5,y:TILE*2,msg:"這是一本古老的書",room:"hall"},
+  {x:TILE*6,y:TILE*3,msg:"打開了！裡面有金幣",room:"treasure"}
 ];
 
 /* ===== 對話框 ===== */
@@ -99,8 +101,8 @@ const dialog = document.getElementById("dialog");
 
 /* ===== 鍵盤 ===== */
 const keys = {};
-window.addEventListener("keydown", e => keys[e.key]=true);
-window.addEventListener("keyup", e => keys[e.key]=false);
+window.addEventListener("keydown", e=>keys[e.key]=true);
+window.addEventListener("keyup", e=>keys[e.key]=false);
 
 /* ===== 主迴圈 ===== */
 function loop(){update();draw();requestAnimationFrame(loop);}
@@ -112,70 +114,107 @@ function update(){
   if(keys["ArrowDown"]||keys["s"]){ny+=1; player.dir="down"; player.moving=true;}
   if(keys["ArrowLeft"]||keys["a"]){nx-=1; player.dir="left"; player.moving=true;}
   if(keys["ArrowRight"]||keys["d"]){nx+=1; player.dir="right"; player.moving=true;}
-  if(!isWall(nx,ny)) {player.x=nx; player.y=ny;}
-  animatePlayer(); updateNPCs(); checkExit(); checkItems();
+  if(!isWall(nx,ny)) player.x=nx, player.y=ny;
+  checkExit(); checkInteractions();
 }
 
-function animatePlayer(){if(!player.moving){player.frame=0; return;}
-  player.animTimer++; if(player.animTimer>10){player.frame=(player.frame+1)%2; player.animTimer=0;}}
-
+/* ===== 判斷牆 ===== */
 function isWall(x,y){
   const map=maps[currentMap];
   const left=Math.floor(x/TILE), right=Math.floor((x+player.w-1)/TILE);
   const top=Math.floor(y/TILE), bottom=Math.floor((y+player.h-1)/TILE);
-  for(let ty=top;ty<=bottom;ty++){for(let tx=left;tx<=right;tx++){if(map[ty]&&map[ty][tx]==="#")return true;}} return false;
+  for(let ty=top;ty<=bottom;ty++)
+    for(let tx=left;tx<=right;tx++)
+      if(map[ty] && map[ty][tx]==="#") return true;
+  return false;
 }
 
+/* ===== 出入口 ===== */
 function checkExit(){
-  const map=maps[currentMap]; const tx=Math.floor(player.x/TILE); const ty=Math.floor(player.y/TILE);
+  const map=maps[currentMap]; 
+  const tx=Math.floor(player.x/TILE); 
+  const ty=Math.floor(player.y/TILE);
   const tile=map[ty][tx];
   if(tile==">"){
-    if(currentMap==="hall"){currentMap="corridor"; player.x=TILE*2;}
-    else if(currentMap==="library"){currentMap="garden"; player.x=TILE*2;}
-    else if(currentMap==="corridor"){currentMap="library"; player.x=TILE*2;}
-    else if(currentMap==="garden"){currentMap="treasure"; player.x=TILE*2;}
+    if(currentMap==="hall") currentMap="corridor", player.x=TILE*2;
+    else if(currentMap==="library") currentMap="garden", player.x=TILE*2;
+    else if(currentMap==="corridor") currentMap="library", player.x=TILE*2;
+    else if(currentMap==="garden") currentMap="treasure", player.x=TILE*2;
   }
   if(tile=="<"){
-    if(currentMap==="corridor"){currentMap="hall"; player.x=TILE*17;}
-    else if(currentMap==="library"){currentMap="corridor"; player.x=TILE*17;}
-    else if(currentMap==="garden"){currentMap="library"; player.x=TILE*17;}
-    else if(currentMap==="treasure"){currentMap="garden"; player.x=TILE*17;}
+    if(currentMap==="corridor") currentMap="hall", player.x=TILE*17;
+    else if(currentMap==="library") currentMap="corridor", player.x=TILE*17;
+    else if(currentMap==="garden") currentMap="library", player.x=TILE*17;
+    else if(currentMap==="treasure") currentMap="garden", player.x=TILE*17;
   }
 }
 
-function updateNPCs(){
+/* ===== 互動判斷 ===== */
+function checkInteractions(){
+  let triggered=false;
   npcs.forEach(npc=>{
     if(npc.room!==currentMap) return;
-    if(npc.route.length>1){
-      npc.routeTimer++; if(npc.routeTimer>60){npc.routeIndex=(npc.routeIndex+1)%npc.route.length; npc.x=npc.route[npc.routeIndex].x*TILE; npc.y=npc.route[npc.routeIndex].y*TILE; npc.routeTimer=0;}
+    if(Math.abs(player.x-npc.x)<16 && Math.abs(player.y-npc.y)<16 && keys[" "]){
+      dialog.style.display="block"; dialog.innerText=npc.msg[0]; triggered=true;
     }
-    if(Math.abs(player.x-npc.x)<16 && Math.abs(player.y-npc.y)<16 && keys[" "]){dialog.style.display="block"; dialog.innerText=npc.msg[0];}
   });
+  items.forEach(it=>{
+    if(it.room!==currentMap) return;
+    if(Math.abs(player.x-it.x)<16 && Math.abs(player.y-it.y)<16 && keys[" "]){
+      dialog.style.display="block"; dialog.innerText=it.msg; triggered=true;
+    }
+  });
+  if(!triggered) dialog.style.display="none";
 }
 
-function checkItems(){
-  items.forEach(item=>{
-    if(item.room!==currentMap) return;
-    if(Math.abs(player.x-item.x)<16 && Math.abs(player.y-item.y)<16 && keys[" "]){dialog.style.display="block"; dialog.innerText=item.msg;}
-  });
+/* ===== 繪製 ===== */
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawMap();
+  drawItems();
+  drawNPCs();
+  drawPlayer();
 }
-
-function draw(){ctx.clearRect(0,0,canvas.width,canvas.height); drawMap(); drawItems(); drawNPCs(); drawPlayer();}
 
 function drawMap(){
   const map=maps[currentMap];
-  for(let y=0;y<map.length;y++){for(let x=0;x<map[y].length;x++){
-    let tile=map[y][x];
-    if(tile==="#"){ctx.fillStyle="#444"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
-    else if(tile==">"||tile=="<"){ctx.fillStyle="#ff0"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
-    else{ctx.fillStyle="#ccc"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
-  }}
+  for(let y=0;y<map.length;y++){
+    for(let x=0;x<map[y].length;x++){
+      const tile=map[y][x];
+      if(tile==="#"){ctx.fillStyle="#444"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+      else if(tile==">"||tile=="<"){ctx.fillStyle="#ff0"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+      else{ctx.fillStyle="#ccc"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+    }
+  }
 }
 
-function drawItems(){items.forEach(item=>{if(item.room!==currentMap) return; ctx.drawImage(spriteObjects,0,0,16,16,item.x,item.y,TILE,TILE);});}
+function drawItems(){
+  items.forEach(it=>{
+    if(it.room!==currentMap) return;
+    ctx.fillStyle="#b5651d"; ctx.fillRect(it.x,it.y,TILE,TILE);
+    ctx.fillStyle="#ff0"; ctx.fillRect(it.x+4,it.y+4,4,4);
+  });
+}
 
-function drawNPCs(){npcs.forEach(npc=>{if(npc.room!==currentMap) return; ctx.drawImage(spriteNPC,0,0,16,16,npc.x,npc.y,TILE,TILE);});}
+function drawNPCs(){
+  npcs.forEach(npc=>{
+    if(npc.room!==currentMap) return;
+    ctx.fillStyle="#00f";
+    ctx.fillRect(npc.x,npc.y,12,12);
+    ctx.fillStyle="#fff";
+    ctx.fillRect(npc.x+3,npc.y+3,2,2);
+    ctx.fillRect(npc.x+7,npc.y+3,2,2);
+  });
+}
 
-function drawPlayer(){ctx.drawImage(spritePlayer,player.frame*16,0,16,16,player.x,player.y,TILE,TILE);}
+function drawPlayer(){
+  ctx.fillStyle="#f00";
+  ctx.fillRect(player.x,player.y,12,12);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(player.x+3,player.y+3,2,2);
+  ctx.fillRect(player.x+7,player.y+3,2,2);
+  ctx.fillStyle="#000";
+  ctx.fillRect(player.x+2,player.y,8,2);
+}
 
 loop();
