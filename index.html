@@ -2,13 +2,13 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>Pixel Manor RPG</title>
+<title>Pixel Castle RPG Demo</title>
 <style>
 body { margin:0; background:#111; display:flex; justify-content:center; align-items:center; height:100vh; }
 canvas { background:#000; image-rendering:pixelated; border:4px solid #444; }
-#dialog { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); 
-         width:300px; padding:10px; background:rgba(0,0,0,0.8); color:#fff; 
-         font-family:monospace; font-size:14px; display:none; border:2px solid #888; }
+#dialog { position:absolute; bottom:20px; left:50%; transform:translateX(-50%);
+  width:360px; padding:10px; background:rgba(0,0,0,0.85); color:#fff;
+  font-family:monospace; font-size:14px; display:none; border:2px solid #888; }
 </style>
 </head>
 <body>
@@ -20,79 +20,152 @@ canvas { background:#000; image-rendering:pixelated; border:4px solid #444; }
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const SCALE = 3;
-canvas.style.width = canvas.width*SCALE+"px";
-canvas.style.height = canvas.height*SCALE+"px";
-const TILE=16;
+canvas.style.width = canvas.width*SCALE + "px";
+canvas.style.height = canvas.height*SCALE + "px";
+const TILE = 16;
 
-/* ===== 地圖資料 ===== */
+/* ===== 地圖資料 (10 房間) ===== */
 const maps = {
-  hall:[
-    "####################",
-    "#.................>#",
-    "#..######..........#",
-    "#..................#",
-    "#........#####.....#",
-    "#..................#",
-    "####################"
-  ],
-  corridor:[
-    "####################",
-    "#<.................#",
-    "#.......#..........#",
-    "#.......#..........#",
-    "#..................#",
-    "#...........>......#",
-    "####################"
-  ],
-  artroom:[
-    "####################",
-    "#<.................#",
-    "#..................#",
-    "#...#.....#........#",
-    "#...#.....#........#",
-    "#..................#",
-    "####################"
-  ]
+ hall:[
+   "####################",
+   "#.................>#",
+   "#..######..........#",
+   "#....##............#",
+   "#........#####.....#",
+   "#..................#",
+   "####################"
+ ],
+ corridor:[
+   "####################",
+   "#<.................#",
+   "#.......#..........#",
+   "#.......#..........#",
+   "#..................#",
+   "#........>.........#",
+   "####################"
+ ],
+ artroom:[
+   "####################",
+   "#<.................#",
+   "#..................#",
+   "#...#.....#........#",
+   "#...#.....#........#",
+   "#..................#",
+   "####################"
+ ],
+ library:[
+   "####################",
+   "#<.................#",
+   "#..................#",
+   "#..#####...........#",
+   "#..................#",
+   "#........>.........#",
+   "####################"
+ ],
+ kitchen:[
+   "####################",
+   "#<.................#",
+   "#..................#",
+   "#..###.............#",
+   "#..................#",
+   "#........>.........#",
+   "####################"
+ ],
+ bedroom:[
+   "####################",
+   "#<.................#",
+   "#..................#",
+   "#...............###.#",
+   "#..................#",
+   "#........>.........#",
+   "####################"
+ ],
+ garden:[
+   "####################",
+   "#<.................#",
+   "#..................#",
+   "#..................#",
+   "#..................#",
+   "#........>.........#",
+   "####################"
+ ],
+ tower:[
+   "####################",
+   "#<.................#",
+   "#..##..............#",
+   "#..................#",
+   "#..................#",
+   "#........>.........#",
+   "####################"
+ ],
+ basement:[
+   "####################",
+   "#<.................#",
+   "#..................#",
+   "#..###.............#",
+   "#..................#",
+   "#........>.........#",
+   "####################"
+ ],
+ secretroom:[
+   "####################",
+   "#<.................#",
+   "#..................#",
+   "#..................#",
+   "#..................#",
+   "#.................>#",
+   "####################"
+ ]
 };
-let currentMap="hall";
+let currentMap = "hall";
 
 /* ===== 玩家 ===== */
-const player={x:TILE*2,y:TILE*2,w:16,h:24,speed:1.2,dir:"down",frame:0,animTimer:0,moving:false};
+const player = {x:TILE*2, y:TILE*2, w:16, h:24, speed:1.2, dir:"down", frame:0, animTimer:0, moving:false};
 
 /* ===== NPC 範例 ===== */
 const npcs=[
-  {x:TILE*10,y:TILE*2,w:16,h:24,dir:"down",frame:0,name:"Guard",msg:["你好，我是守衛","城堡很大喔"],route:[{x:10,y:2},{x:10,y:4},{x:12,y:4},{x:12,y:2}],routeIndex:0,routeTimer:0},
-  {x:TILE*6,y:TILE*4,w:16,h:24,dir:"down",frame:0,name:"Painter",msg:["畫室很安靜","喜歡畫畫嗎？"],route:[{x:6,y:4}],routeIndex:0,routeTimer:0}
+  {x:TILE*10,y:TILE*2,w:16,h:24,dir:"down",frame:0,name:"Guard",msg:["你好，我是守衛","城堡很大喔"],route:[{x:10,y:2},{x:10,y:4},{x:12,y:4},{x:12,y:2}],routeIndex:0,routeTimer:0,room:"hall"},
+  {x:TILE*6,y:TILE*4,w:16,h:24,dir:"down",frame:0,name:"Painter",msg:["畫室很安靜","喜歡畫畫嗎？"],route:[{x:6,y:4}],routeIndex:0,routeTimer:0,room:"artroom"},
+  {x:TILE*5,y:TILE*2,w:16,h:24,dir:"down",frame:0,name:"Librarian",msg:["書館裡有好多書"],route:[{x:5,y:2}],routeIndex:0,routeTimer:0,room:"library"},
+  {x:TILE*8,y:TILE*3,w:16,h:24,dir:"down",frame:0,name:"Chef",msg:["我在準備晚餐"],route:[{x:8,y:3}],routeIndex:0,routeTimer:0,room:"kitchen"},
+  {x:TILE*7,y:TILE*3,w:16,h:24,dir:"down",frame:0,name:"Gardener",msg:["庭院需要澆水"],route:[{x:7,y:3}],routeIndex:0,routeTimer:0,room:"garden"},
+  {x:TILE*9,y:TILE*4,w:16,h:24,dir:"down",frame:0,name:"SleepingCat",msg:["喵～"],route:[{x:9,y:4}],routeIndex:0,routeTimer:0,room:"bedroom"}
 ];
 
 /* ===== 互動物件 ===== */
 const items=[
-  {x:TILE*5,y:TILE*2,w:16,h:16,name:"書",msg:"這是一本古老的書"},
-  {x:TILE*8,y:TILE*3,w:16,h:16,name:"畫",msg:"這幅畫充滿色彩"},
-  {x:TILE*14,y:TILE*4,w:16,h:16,name:"桌子",msg:"桌子上有幾本筆記"}
+  {x:TILE*5,y:TILE*2,w:16,h:16,name:"書",msg:"這是一本古老的書",room:"library"},
+  {x:TILE*8,y:TILE*3,w:16,h:16,name:"畫",msg:"這幅畫充滿色彩",room:"artroom"},
+  {x:TILE*14,y:TILE*4,w:16,h:16,name:"桌子",msg:"桌子上有幾本筆記",room:"hall"},
+  {x:TILE*3,y:TILE*2,w:16,h:16,name:"鍋子",msg:"廚房裡的鍋子",room:"kitchen"},
+  {x:TILE*6,y:TILE*3,w:16,h:16,name:"花盆",msg:"漂亮的花盆",room:"garden"}
 ];
 
 /* ===== 對話框 ===== */
-const dialog=document.getElementById("dialog");
+const dialog = document.getElementById("dialog");
 
 /* ===== 鍵盤 ===== */
-const keys={};
-window.addEventListener("keydown",e=>keys[e.key]=true);
-window.addEventListener("keyup",e=>keys[e.key]=false);
+const keys = {};
+window.addEventListener("keydown", e => keys[e.key] = true);
+window.addEventListener("keyup", e => keys[e.key] = false);
 
-/* ===== 玩家 & NPC Sprite ===== */
-const sprite=document.createElement("canvas");
-sprite.width=64; sprite.height=96;
-const sctx=sprite.getContext("2d");
+/* ===== 玩家 & NPC Sprite (像素美術版) ===== */
+const sprite = document.createElement("canvas");
+sprite.width = 64; sprite.height = 96;
+const sctx = sprite.getContext("2d");
 function drawSpriteSheet(){
-  const colors={head:"#ffd966",body:"#6fa8dc",legs:"#444"};
+  const colors = {head:"#ffd966",body:"#6fa8dc",legs:"#444"};
   const dirs=["down","left","right","up"];
   dirs.forEach((dir,d)=>{
     for(let f=0;f<2;f++){
-      const x=f*16,y=d*24;
+      const x=f*16, y=d*24;
+      // 頭
       sctx.fillStyle=colors.head; sctx.fillRect(x+4,y+2,8,8);
+      // 身體
       sctx.fillStyle=colors.body; sctx.fillRect(x+3,y+10,10,8);
-      sctx.fillStyle=colors.legs; sctx.fillRect(x+4+(f*2),y+18,3,4); sctx.fillRect(x+9-(f*2),y+18,3,4);
+      // 腿
+      sctx.fillStyle=colors.legs; sctx.fillRect(x+4+(f*2),y+18,3,4);
+      sctx.fillRect(x+9-(f*2),y+18,3,4);
     }
   });
 }
@@ -103,7 +176,7 @@ function loop(){update();draw();requestAnimationFrame(loop);}
 
 /* ===== 更新 ===== */
 function update(){
-  let nx=player.x,ny=player.y; player.moving=false;
+  let nx=player.x, ny=player.y; player.moving=false;
   if(keys["ArrowUp"]||keys["w"]){ny-=player.speed;player.dir="up";player.moving=true;}
   if(keys["ArrowDown"]||keys["s"]){ny+=player.speed;player.dir="down";player.moving=true;}
   if(keys["ArrowLeft"]||keys["a"]){nx-=player.speed;player.dir="left";player.moving=true;}
@@ -120,23 +193,36 @@ function animate(){if(!player.moving){player.frame=0;return;}player.animTimer++;
 
 /* ===== 牆體碰撞 ===== */
 function isWall(x,y){
-  const map=maps[currentMap];
-  const left=Math.floor(x/TILE),right=Math.floor((x+player.w-1)/TILE);
-  const top=Math.floor(y/TILE),bottom=Math.floor((y+player.h-1)/TILE);
+  const map = maps[currentMap];
+  const left=Math.floor(x/TILE), right=Math.floor((x+player.w-1)/TILE);
+  const top=Math.floor(y/TILE), bottom=Math.floor((y+player.h-1)/TILE);
   for(let ty=top;ty<=bottom;ty++){for(let tx=left;tx<=right;tx++){if(map[ty][tx]==="#")return true;}}
   return false;
 }
 
 /* ===== 場景切換 ===== */
 function checkExit(){
-  const map=maps[currentMap]; const tx=Math.floor(player.x/TILE); const ty=Math.floor(player.y/TILE); const tile=map[ty][tx];
-  if(tile==">"){if(currentMap==="hall"){currentMap="corridor";player.x=TILE*2;}else if(currentMap==="corridor"){currentMap="artroom";player.x=TILE*2;}}
-  if(tile=="<"){if(currentMap==="corridor"){currentMap="hall";player.x=TILE*17;}else if(currentMap==="artroom"){currentMap="corridor";player.x=TILE*17;}}
+  const map = maps[currentMap]; const tx=Math.floor(player.x/TILE); const ty=Math.floor(player.y/TILE); const tile = map[ty][tx];
+  if(tile==">"){switch(currentMap){
+    case "hall": currentMap="corridor"; player.x=TILE*2; break;
+    case "corridor": currentMap="artroom"; player.x=TILE*2; break;
+    case "library": currentMap="kitchen"; player.x=TILE*2; break;
+    case "kitchen": currentMap="bedroom"; player.x=TILE*2; break;
+    case "garden": currentMap="tower"; player.x=TILE*2; break;
+  }}
+  if(tile=="<"){switch(currentMap){
+    case "corridor": currentMap="hall"; player.x=TILE*17; break;
+    case "artroom": currentMap="corridor"; player.x=TILE*17; break;
+    case "kitchen": currentMap="library"; player.x=TILE*17; break;
+    case "bedroom": currentMap="kitchen"; player.x=TILE*17; break;
+    case "tower": currentMap="garden"; player.x=TILE*17; break;
+  }}
 }
 
 /* ===== NPC 行走 & 對話 ===== */
 function updateNPCs(){
   npcs.forEach(npc=>{
+    if(npc.room!==currentMap) return;
     if(npc.route.length>1){
       npc.routeTimer++; if(npc.routeTimer>60){
         npc.routeIndex=(npc.routeIndex+1)%npc.route.length;
@@ -144,7 +230,6 @@ function updateNPCs(){
         npc.routeTimer=0;
       }
     }
-    // 對話觸發
     if(Math.abs(player.x-npc.x)<16 && Math.abs(player.y-npc.y)<16 && keys[" "]){
       dialog.style.display="block"; dialog.innerText=npc.msg[0];
     }
@@ -154,6 +239,7 @@ function updateNPCs(){
 /* ===== 互動物件 ===== */
 function checkItems(){
   items.forEach(item=>{
+    if(item.room!==currentMap) return;
     if(Math.abs(player.x-item.x)<16 && Math.abs(player.y-item.y)<16 && keys[" "]){
       dialog.style.display="block"; dialog.innerText=item.msg;
     }
@@ -161,19 +247,46 @@ function checkItems(){
 }
 
 /* ===== 繪製 ===== */
-function draw(){ctx.clearRect(0,0,canvas.width,canvas.height); drawMap(); drawItems(); drawNPCs(); drawPlayer();}
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawMap(); drawItems(); drawNPCs(); drawPlayer();
+}
 
 /* ===== 地圖 ===== */
-function drawMap(){const map=maps[currentMap];for(let y=0;y<map.length;y++){for(let x=0;x<map[y].length;x++){ctx.fillStyle=map[y][x]==="#"?"#555":"#2e2e2e"; ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}}}
+function drawMap(){
+  const map = maps[currentMap];
+  for(let y=0;y<map.length;y++){
+    for(let x=0;x<map[y].length;x++){
+      ctx.fillStyle = map[y][x]==="#" ? "#555" : "#2e2e2e";
+      ctx.fillRect(x*TILE,y*TILE,TILE,TILE);
+      if(map[y][x]=="<"||map[y][x]==">"){ctx.fillStyle="#ffcc00";ctx.fillRect(x*TILE,y*TILE,TILE,TILE);}
+    }
+  }
+}
 
 /* ===== 畫物件 ===== */
-function drawItems(){items.forEach(item=>{ctx.fillStyle="#ff66ff"; ctx.fillRect(item.x,item.y,TILE,TILE);});}
+function drawItems(){
+  items.forEach(item=>{
+    if(item.room!==currentMap) return;
+    ctx.fillStyle="#ff66ff";
+    ctx.fillRect(item.x,item.y,TILE,TILE);
+  });
+}
 
 /* ===== 畫 NPC ===== */
-function drawNPCs(){npcs.forEach(npc=>{const dirIndex={down:0,left:1,right:2,up:3}[npc.dir]; ctx.drawImage(sprite,npc.frame*16,dirIndex*24,16,24,npc.x,npc.y,16,24);});}
+function drawNPCs(){
+  npcs.forEach(npc=>{
+    if(npc.room!==currentMap) return;
+    const dirIndex = {down:0,left:1,right:2,up:3}[npc.dir];
+    ctx.drawImage(sprite,npc.frame*16,dirIndex*24,16,24,npc.x,npc.y,16,24);
+  });
+}
 
 /* ===== 畫玩家 ===== */
-function drawPlayer(){const dirIndex={down:0,left:1,right:2,up:3}[player.dir]; ctx.drawImage(sprite,player.frame*16,dirIndex*24,16,24,Math.floor(player.x),Math.floor(player.y),16,24);}
+function drawPlayer(){
+  const dirIndex = {down:0,left:1,right:2,up:3}[player.dir];
+  ctx.drawImage(sprite,player.frame*16,dirIndex*24,16,24,Math.floor(player.x),Math.floor(player.y),16,24);
+}
 
 loop();
 </script>
