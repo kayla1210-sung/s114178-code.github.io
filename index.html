@@ -57,7 +57,18 @@ const spriteTiles = new Image(); spriteTiles.src = "sprites/tileset.png";
 const spriteObjects = new Image(); spriteObjects.src = "sprites/objects.png";
 
 /* ===== 玩家 ===== */
-const player = {x:TILE*2, y:TILE*2, w:16, h:16, dir:"down", frame:0, animTimer:0, moving:false};
+const player = {
+  x:TILE*2, 
+  y:TILE*2,
+  w:12,         // 碰撞寬度，比 sprite 小
+  h:12,         // 碰撞高度，比 sprite 小
+  offsetX:2,    // 畫圖偏移 X
+  offsetY:4,    // 畫圖偏移 Y
+  dir:"down",
+  frame:0,
+  animTimer:0,
+  moving:false
+};
 
 /* ===== NPC ===== */
 const npcs=[
@@ -176,7 +187,12 @@ function drawNPCs(){
 }
 
 function drawPlayer(){
-  ctx.drawImage(spritePlayer, player.frame*16,0,16,16, player.x, player.y, TILE, TILE);
+  ctx.drawImage(
+    spritePlayer,
+    player.frame*16, 0, 16, 16,
+    player.x - player.offsetX, player.y - player.offsetY,
+    16, 16
+  );
 }
 
 loop();
