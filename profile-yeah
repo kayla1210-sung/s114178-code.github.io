@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>反應力測試：別按錯！</title>
+  <title>消失的方塊 - Memory Tap</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -14,139 +14,179 @@
     }
 
     h1 {
-      margin-top: 20px;
+      margin: 20px 0 10px;
     }
 
-    #game {
-      margin-top: 40px;
+    #info {
+      font-size: 18px;
+      margin-bottom: 10px;
     }
 
-    #box {
-      width: 150px;
-      height: 150px;
-      margin: 30px auto;
-      border-radius: 12px;
-      display: none;
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(3, 90px);
+      gap: 12px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+
+    .cell {
+      width: 90px;
+      height: 90px;
+      background: #444;
+      border-radius: 10px;
       cursor: pointer;
-      transition: transform 0.1s;
+      transition: background 0.2s, transform 0.1s;
     }
 
-    #box:active {
+    .cell:active {
       transform: scale(0.95);
     }
 
-    .green { background: #2ecc71; }
-    .red { background: #e74c3c; }
-    .blue { background: #3498db; }
+    .active {
+      background: #f1c40f;
+    }
 
-    #info {
-      font-size: 20px;
-      margin-top: 10px;
+    .correct {
+      background: #2ecc71;
+    }
+
+    .wrong {
+      background: #e74c3c;
     }
 
     button {
       padding: 10px 20px;
       font-size: 16px;
-      cursor: pointer;
       border: none;
       border-radius: 6px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-  <h1>🎮 反應力測試：別按錯！</h1>
+<h1>🧠 消失的方塊</h1>
 
-  <div id="info">
-    分數：<span id="score">0</span>　
-    生命：<span id="life">3</span>
-  </div>
+<div id="info">
+  關卡：<span id="level">1</span>　
+  生命：<span id="life">3</span>
+</div>
 
-  <div id="game">
-    <div id="box"></div>
-    <button onclick="startGame()">開始遊戲</button>
-  </div>
+<div id="grid"></div>
 
-  <script>
-    const box = document.getElementById("box");
-    const scoreText = document.getElementById("score");
-    const lifeText = document.getElementById("life");
+<button onclick="startGame()">開始遊戲</button>
 
-    let score = 0;
-    let life = 3;
-    let state = "";
-    let canClick = false;
-    let speed = 1200;
+<script>
+  const grid = document.getElementById("grid");
+  const levelText = document.getElementById("level");
+  const lifeText = document.getElementById("life");
 
-    function startGame() {
-      score = 0;
-      life = 3;
-      speed = 1200;
-      updateUI();
-      nextRound();
+  let level = 1;
+  let life = 3;
+  let activeCells = [];
+  let clickedCells = [];
+  let canClick = false;
+
+  const gridSize = 9; // 3x3
+
+  function startGame() {
+    level = 1;
+    life = 3;
+    updateUI();
+    createGrid();
+    startLevel();
+  }
+
+  function createGrid() {
+    grid.innerHTML = "";
+    for (let i = 0; i < gridSize; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.index = i;
+      cell.addEventListener("click", () => handleClick(i, cell));
+      grid.appendChild(cell);
     }
+  }
 
-    function nextRound() {
-      if (life <= 0) {
-        alert("遊戲結束！你的分數是：" + score);
-        box.style.display = "none";
-        return;
-      }
+  function startLevel() {
+    canClick = false;
+    clickedCells = [];
+    activeCells = [];
 
-      box.style.display = "none";
-      canClick = false;
+    const cellCount = Math.min(2 + level, gridSize);
+    const indices = [...Array(gridSize).keys()];
 
-      setTimeout(() => {
-        const rand = Math.random();
-        box.className = "";
+    shuffle(indices);
+    activeCells = indices.slice(0, cellCount);
 
-        if (rand < 0.4) {
-          state = "green";
-          box.classList.add("green");
-          canClick = true;
-        } else if (rand < 0.7) {
-          state = "red";
-          box.classList.add("red");
-          canClick = false;
-        } else {
-          state = "blue";
-          box.classList.add("blue");
-          canClick = false;
-          setTimeout(() => canClick = true, 1000);
-        }
-
-        box.style.display = "block";
-
-        setTimeout(() => {
-          if (canClick) {
-            life--;
-            updateUI();
-          }
-          nextRound();
-        }, speed);
-
-      }, 400);
-    }
-
-    box.addEventListener("click", () => {
-      if (state === "green" && canClick) {
-        score++;
-      } else if (state === "blue" && canClick) {
-        score += 2;
-      } else {
-        life--;
-      }
-
-      speed = Math.max(400, speed - 30);
-      updateUI();
-      nextRound();
+    activeCells.forEach(i => {
+      grid.children[i].classList.add("active");
     });
 
-    function updateUI() {
-      scoreText.textContent = score;
-      lifeText.textContent = life;
+    setTimeout(() => {
+      activeCells.forEach(i => {
+        grid.children[i].classList.remove("active");
+      });
+      canClick = true;
+    }, Math.max(1200 - level * 100, 400));
+  }
+
+  function handleClick(index, cell) {
+    if (!canClick || clickedCells.includes(index)) return;
+
+    clickedCells.push(index);
+
+    if (activeCells.includes(index)) {
+      cell.classList.add("correct");
+    } else {
+      cell.classList.add("wrong");
+      life--;
+      updateUI();
+      canClick = false;
+      setTimeout(checkGameOver, 600);
+      return;
     }
-  </script>
+
+    if (clickedCells.length === activeCells.length) {
+      canClick = false;
+      setTimeout(() => {
+        level++;
+        updateUI();
+        resetCells();
+        startLevel();
+      }, 600);
+    }
+  }
+
+  function resetCells() {
+    [...grid.children].forEach(cell => {
+      cell.classList.remove("correct", "wrong");
+    });
+  }
+
+  function checkGameOver() {
+    if (life <= 0) {
+      alert("遊戲結束！你到達第 " + level + " 關");
+      canClick = false;
+    } else {
+      resetCells();
+      startLevel();
+    }
+  }
+
+  function updateUI() {
+    levelText.textContent = level;
+    lifeText.textContent = life;
+  }
+
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+</script>
 
 </body>
 </html>
